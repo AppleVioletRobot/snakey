@@ -1,6 +1,8 @@
 # Convalescent Snakes & Ladders Board
 ## Overview & Maintenance Notes
 
+> **La Serpiente:** this branch is the Spanish-language edition of Convalescent Snakes & Ladders. The mechanics are intentionally kept identical to the stable English version; localisation is confined to player-facing language and, where needed, culturally specific wording.
+
 **This repository is published as a reference artefact. Please fork rather than edit directly.**
 
 ---
