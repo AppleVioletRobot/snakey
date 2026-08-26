@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -136,13 +136,13 @@ const STRING_COLOR = "rgba(184, 38, 60, 0.55)";
 const STRING_KNOT_COLOR = "rgba(184, 38, 60, 0.85)";
 
 // --- TUNING KNOBS (art-friendly) ---
-let TOKEN_PAD_FRAC = 0.12;         // increase to lift token
-let PIN_PAD_FRAC   = 0.10;         // hospital knot anchor
-let RECALL_LABEL_X_FRAC = 0.14;    // move label left
-let RECALL_LABEL_Y_FRAC = 0.08;    // smaller = lower label
+let TOKEN_PAD_FRAC = 0.12;
+let PIN_PAD_FRAC   = 0.10;
+let RECALL_LABEL_X_FRAC = 0.14;
+let RECALL_LABEL_Y_FRAC = 0.08;
 
 // Input pacing (prevents skipping time-gated mechanics)
-const STEP_COOLDOWN_MS = 180; // try 180–220
+const STEP_COOLDOWN_MS = 180;
 let stepLockedUntil = 0;
   
 // Image cache
@@ -152,7 +152,6 @@ function getImage(path) {
   if (!path) return null;
   if (imageCache.has(path)) return imageCache.get(path);
   const img = new Image();
-  // When running render-on-demand, asset loads must explicitly trigger a redraw.
   img.onload = () => { loadedImages.add(path); invalidate(); };
   img.onerror = () => { invalidate(); };
   img.src = path;
@@ -162,7 +161,6 @@ function getImage(path) {
 
 /* ===============================
    RENDER LOOP CONTROL (battery/perf)
-   - render-on-demand via invalidate()
 =============================== */
 let needsRender = true;
 let rafId = null;
@@ -180,9 +178,8 @@ function invalidate() {
   if (rafId === null) rafId = requestAnimationFrame(frame);
 }
 
-// Expensive derived text is memoised
-const scrambleCache = new Map();   // key: `${square}::${text}` -> scrambled string
-const richTextCache = new Map();   // key: `${kind}::${w}::${h}::${text}` -> layout object
+const scrambleCache = new Map();
+const richTextCache = new Map();
 
 function clearTextCaches() {
   scrambleCache.clear();
@@ -200,10 +197,7 @@ function resizeCanvas() {
   canvas.height = Math.round(size * dpr);
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = true; // SVGs look better with smoothing
-
-
-  // layout depends on pixel sizes
+  ctx.imageSmoothingEnabled = true;
   richTextCache.clear();
   invalidate();
 }
@@ -234,7 +228,7 @@ function squareCornerAnchor(n, corner, padFrac) {
   const pad = r.w * padFrac;
 
   if (corner === "bl") return { x: r.x + pad, y: r.y + r.h - pad, r };
-  return { x: r.x + r.w - pad, y: r.y + r.h - pad, r }; // br
+  return { x: r.x + r.w - pad, y: r.y + r.h - pad, r };
 }
 
 function squareCenter(n) {
@@ -257,7 +251,6 @@ async function loadTiles() {
   };
 
   const defaultPath = tileConfig.tiles[tileConfig.defaultTile];
-
   tileBySquare = {};
   for (let n = 1; n <= 100; n++) tileBySquare[n] = defaultPath;
 
@@ -275,7 +268,6 @@ async function loadTiles() {
 async function loadText() {
   const res = await fetch("data/text.json?v=" + Date.now());
   const data = await res.json();
-
   const out = {};
 
   if (data && typeof data === "object" && data.squares && typeof data.squares === "object") {
@@ -307,7 +299,6 @@ async function loadText() {
 }
 
 async function loadPopups() {
-  // Keep raw object; expect entry.popup string
   try {
     const res = await fetch("data/popups.json?v=" + Date.now());
     if (!res.ok) throw new Error("popups.json not ok");
@@ -331,13 +322,10 @@ async function loadJumps() {
       for (const [k, arr] of Object.entries(data.spinners)) {
         const from = Number(k);
         if (!Number.isFinite(from) || from < 1 || from > 100) continue;
-
         const list = (Array.isArray(arr) ? arr : [arr])
           .map(Number)
           .filter(to => Number.isFinite(to) && to >= 1 && to <= 100 && to !== from);
-
         if (!list.length) continue;
-
         spinnerMap[from] = list;
         spinnerSquares.add(from);
       }
@@ -347,18 +335,11 @@ async function loadJumps() {
       for (const [k, v] of Object.entries(data.jumps)) {
         const from = Number(k);
         if (!Number.isFinite(from) || from < 1 || from > 100) continue;
-
-        // Support either:
-        //  - "jumps": { "12": 34 }
-        //  - "jumps": { "12": [34, 56, ...] }
-        // (Some builds use jumps.json as the primary spinner destination map.)
         const rawList = Array.isArray(v) ? v : [v];
         const list = rawList
           .map(Number)
           .filter(to => Number.isFinite(to) && to >= 1 && to <= 100 && to !== from);
-
         if (!list.length) continue;
-
         if (!spinnerMap[from]) {
           spinnerMap[from] = list;
           spinnerSquares.add(from);
@@ -386,7 +367,6 @@ async function loadWindows() {
     const res = await fetch("data/windows.json?v=" + Date.now());
     if (!res.ok) throw new Error("windows.json not ok");
     const data = await res.json();
-
     const arr = Array.isArray(data.windows) ? data.windows : [];
     windowSquares = new Set(arr.map(Number).filter(n => Number.isFinite(n) && n >= 1 && n <= 100));
   } catch {
@@ -406,17 +386,15 @@ function preloadImages(paths) {
 }
 
 /* ===============================
-   UNDERSTANDING RESTRICTION (cipher-only)
+   UNDERSTANDING RESTRICTION
 =============================== */
 function recordMove(toSquare) {
   toSquare = Math.max(1, Math.min(100, toSquare));
   const step = (toSquare > playerSquare) ? 1 : -1;
-
   while (playerSquare !== toSquare) {
     playerSquare += step;
     visited.push(playerSquare);
   }
-
   if (visited.length > 500) visited = visited.slice(-250);
 }
 
@@ -426,25 +404,19 @@ function getVisibleSet() {
     for (let n = 1; n <= 100; n++) all.add(n);
     return all;
   }
-
   const vis = new Set();
   vis.add(1);
   vis.add(playerSquare);
-
   for (let i = 1; i <= AHEAD; i++) vis.add(Math.min(100, playerSquare + i));
-
-  // breadcrumb trail behind you
   for (let i = visited.length - 1; i >= 0 && vis.size < (2 + AHEAD + TRAIL_BEHIND); i--) {
     vis.add(visited[i]);
   }
   return vis;
 }
 
-// Deterministic scramble per square (stable per square number)
 function scrambleText(text, seed) {
   let s = seed * 99991;
   const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-
   return [...String(text)].map(ch => {
     if (/[a-z]/.test(ch)) return String.fromCharCode(97 + Math.floor(rand() * 26));
     if (/[A-Z]/.test(ch)) return String.fromCharCode(65 + Math.floor(rand() * 26));
@@ -453,7 +425,6 @@ function scrambleText(text, seed) {
 }
 
 function getScrambledText(square, sourceText) {
-  // Memoised per (square, text). Cleared when JSON reloads or reveal toggles.
   const key = `${square}::${sourceText}`;
   const cached = scrambleCache.get(key);
   if (cached !== undefined) return cached;
@@ -461,7 +432,6 @@ function getScrambledText(square, sourceText) {
   scrambleCache.set(key, out);
   return out;
 }
-
 
 /* ===============================
    POPUPS / SUBSTITUTION
@@ -490,25 +460,21 @@ function maybeArmSubstitutionOnLanding(n, tNow) {
 
 function updateSubstitution(t) {
   clearActiveSubstitutionIfMoved();
-
   if (!substitutionArmed) return;
-
   if (playerSquare !== substitutionArmed.square) {
     substitutionArmed = null;
-    needsRender = true; // substitution ended/cleared
+    needsRender = true;
     return;
   }
-
   if (t >= substitutionArmed.showAt) {
     const sq = substitutionArmed.square;
     const txt = getSubTextForSquare(sq);
-
     if (txt) {
       activeSubSquare = sq;
       activeSubText = txt;
     }
     substitutionArmed = null;
-    needsRender = true; // substitution ended/cleared
+    needsRender = true;
   }
 }
 
@@ -521,14 +487,12 @@ function getSquareDisplayText(n) {
 /* ===============================
    DRAW: TILE + ICON OVERLAY
 =============================== */
-// Icon sizing knobs (contain sizing avoids clipping on non-square viewBoxes)
-let ICON_PAD_FRAC = 0.09;        // smaller pad => bigger icon
-let SPINNER_PAD_FRAC = 0.06;     // spinner takeover icon pad
+let ICON_PAD_FRAC = 0.09;
+let SPINNER_PAD_FRAC = 0.06;
 
 function drawTile(tilePath, r) {
   const img = getImage(tilePath);
   if (!img || !img.complete || img.naturalWidth === 0) return;
-
   const pad = r.w * 0.06;
   ctx.drawImage(img, r.x + pad, r.y + pad, r.w - 2 * pad, r.h - 2 * pad);
 }
@@ -536,23 +500,17 @@ function drawTile(tilePath, r) {
 function drawIconContain(iconPath, r, opts = {}) {
   const img = getImage(iconPath);
   if (!img || !img.complete || img.naturalWidth === 0) return;
-
   const padFrac = (opts.padFrac ?? ICON_PAD_FRAC);
   const pad = padFrac * r.w;
-
   const availW = Math.max(1, r.w - 2 * pad);
   const availH = Math.max(1, r.h - 2 * pad);
-
   const iw = img.naturalWidth || 1;
   const ih = img.naturalHeight || 1;
-
   const scale = Math.min(availW / iw, availH / ih);
   const dw = iw * scale;
   const dh = ih * scale;
-
   const dx = r.x + (r.w - dw) / 2;
   const dy = r.y + (r.h - dh) / 2;
-
   ctx.save();
   ctx.globalAlpha = (opts.alpha ?? 1);
   ctx.drawImage(img, dx, dy, dw, dh);
@@ -560,7 +518,7 @@ function drawIconContain(iconPath, r, opts = {}) {
 }
 
 /* ===============================
-   WINDOWS (icon-first, then text reveals on landing)
+   WINDOWS
 =============================== */
 function clearWindowIfMoved() {
   if (windowRevealed !== null && playerSquare !== windowRevealed) windowRevealed = null;
@@ -576,11 +534,10 @@ function updateWindowReveal(t) {
   clearWindowIfMoved();
   if (!windowArmed) return;
   if (playerSquare !== windowArmed.square) { windowArmed = null; return; }
-
   if (t >= windowArmed.revealAt) {
     windowRevealed = windowArmed.square;
     windowArmed = null;
-    needsRender = true; // window reveal finished/cleared
+    needsRender = true;
   }
 }
 
@@ -590,13 +547,12 @@ function isWindowRevealedForSquare(n) {
 }
 
 /* ===============================
-   TEXT: markdown-lite bold (**bold**)
+   TEXT
 =============================== */
 function parseBoldRuns(str) {
   const runs = [];
   let i = 0;
   let bold = false;
-
   while (i < str.length) {
     const j = str.indexOf("**", i);
     if (j === -1) {
@@ -625,17 +581,13 @@ function measureRunText(fontSizePx, bold, text) {
 function layoutRichText(text, maxWidth, fontSizePx) {
   const paragraphs = String(text).split("\n");
   const lines = [];
-
   for (let p = 0; p < paragraphs.length; p++) {
     const para = paragraphs[p];
-
     if (para.trim() === "") {
       lines.push({ type: "gap" });
       continue;
     }
-
     const runs = parseBoldRuns(para);
-
     const tokens = [];
     for (const run of runs) {
       const parts = run.text.split(" ");
@@ -646,42 +598,30 @@ function layoutRichText(text, maxWidth, fontSizePx) {
         if (k < parts.length - 1) tokens.push({ text: " ", bold: run.bold, isSpace: true });
       }
     }
-
     let current = [];
     let currentW = 0;
-
     for (const tok of tokens) {
       const w = measureRunText(fontSizePx, tok.bold, tok.text);
-
       if (current.length === 0 && tok.isSpace) continue;
-
       if (currentW + w > maxWidth && current.length > 0) {
         while (current.length && current[current.length - 1].isSpace) current.pop();
         lines.push({ type: "line", runs: current });
-
         current = [];
         currentW = 0;
-
         if (tok.isSpace) continue;
       }
-
       current.push(tok);
       currentW += w;
     }
-
     while (current.length && current[current.length - 1].isSpace) current.pop();
     if (current.length) lines.push({ type: "line", runs: current });
-
     if (p < paragraphs.length - 1) lines.push({ type: "gap" });
   }
-
   while (lines.length && lines[lines.length - 1].type === "gap") lines.pop();
   return lines;
 }
 
-
 function measureLinesWithWidths(lines, fontSizePx) {
-  // Adds width to each token run and precomputes each line's width.
   const out = [];
   for (const item of lines) {
     if (item.type === "gap") { out.push({ type: "gap" }); continue; }
@@ -698,39 +638,24 @@ function measureLinesWithWidths(lines, fontSizePx) {
 }
 
 function getRichTextFitCached(text, maxWidth, maxHeight, opts = {}) {
-  const {
-    kind = "cell",
-    startFont = 12,
-    minFont = 6,
-    padding = 6,
-    lineHMult = 1.10,
-    gapMult = 0.18
-  } = opts;
-
+  const { kind = "cell", startFont = 12, minFont = 6, padding = 6, lineHMult = 1.10, gapMult = 0.18 } = opts;
   const wKey = Math.round(maxWidth);
   const hKey = Math.round(maxHeight);
   const key = `${kind}::${wKey}::${hKey}::${startFont}::${minFont}::${padding}::${lineHMult}::${gapMult}::${text}`;
-
   const cached = richTextCache.get(key);
   if (cached) return cached;
-
   let chosen = null;
-
   for (let fontSize = startFont; fontSize >= minFont; fontSize--) {
     const rawLines = layoutRichText(text, maxWidth, fontSize);
-
     const lineH = Math.round(fontSize * lineHMult);
     const gapH  = Math.round(lineH * gapMult);
-
     const blockH = rawLines.reduce((h, item) => h + (item.type === "gap" ? gapH : lineH), 0);
-
     if (blockH <= maxHeight - padding * 2) {
       const lines = measureLinesWithWidths(rawLines, fontSize);
       chosen = { fontSize, lines, lineH, gapH, blockH, padding };
       break;
     }
   }
-
   if (!chosen) {
     const fontSize = minFont;
     const rawLines = layoutRichText(text, maxWidth, fontSize);
@@ -740,38 +665,26 @@ function getRichTextFitCached(text, maxWidth, maxHeight, opts = {}) {
     const lines = measureLinesWithWidths(rawLines, fontSize);
     chosen = { fontSize, lines, lineH, gapH, blockH, padding };
   }
-
   richTextCache.set(key, chosen);
   return chosen;
 }
 
 function drawRichText(text, r, alpha = 1) {
   if (!text) return;
-
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = "#000";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-
   const padding = 6;
   const maxWidth = r.w - padding * 2;
-
   const fit = getRichTextFitCached(text, maxWidth, r.h, {
-    kind: "cell",
-    startFont: 12,
-    minFont: 6,
-    padding,
-    lineHMult: 1.10,
-    gapMult: 0.18
+    kind: "cell", startFont: 12, minFont: 6, padding, lineHMult: 1.10, gapMult: 0.18
   });
-
   let y = r.y + (r.h - fit.blockH) / 2;
   const cx = r.x + r.w / 2;
-
   for (const item of fit.lines) {
     if (item.type === "gap") { y += fit.gapH; continue; }
-
     let x = cx - item.lineW / 2;
     for (const run of item.runs) {
       setFont(fit.fontSize, run.bold);
@@ -780,12 +693,11 @@ function drawRichText(text, r, alpha = 1) {
     }
     y += fit.lineH;
   }
-
   ctx.restore();
 }
 
 /* ===============================
-   SPINNERS (land → pause → snakes icon → next keypress flings you)
+   SPINNERS
 =============================== */
 function randInt(maxExclusive) {
   if (maxExclusive <= 1) return 0;
@@ -804,14 +716,8 @@ function chooseSpinnerDestination(fromSquare) {
   return options[randInt(options.length)];
 }
 
-
 function chooseSpinnerIcon() {
-  // Prefer icons that have successfully loaded; otherwise fall back to default.
-  // With render-on-demand, we must also *kick off* async loads explicitly (the old
-  // always-on RAF used to mask this). So: request images, then randomise across
-  // the ones that are already loaded.
   for (const p of SPINNER_ICON_PATHS) getImage(p);
-
   const loaded = SPINNER_ICON_PATHS.filter(p => loadedImages.has(p));
   const pool = loaded.length ? loaded : [SPINNER_ICON_DEFAULT];
   return pool[randInt(pool.length)];
@@ -821,25 +727,19 @@ function armSpinnerLanding(square, tNow) {
   if (revealAll) return;
   if (!spinnerSquares.has(square)) return;
   if (spinActive) return;
-
   spinnerLanding = { square, revealAt: tNow + SPINNER_REVEAL_MS, revealed: false, iconPath: chooseSpinnerIcon() };
-
-  // Prevent "stepping over" the spinner square: while the landing is pending reveal,
-  // movement input is blocked via the existing step cooldown gate.
   stepLockedUntil = Math.max(stepLockedUntil, spinnerLanding.revealAt);
 }
 
 function updateSpinnerLanding(t) {
   if (!spinnerLanding) return;
-
   if (playerSquare !== spinnerLanding.square) {
     spinnerLanding = null;
     return;
   }
-
   if (!spinnerLanding.revealed && t >= spinnerLanding.revealAt) {
     spinnerLanding.revealed = true;
-    needsRender = true; // reveal state changed
+    needsRender = true;
   }
 }
 
@@ -855,78 +755,58 @@ function spinnerReadyOnCurrentSquare() {
 
 function triggerSpinnerJump(tNow) {
   if (!spinnerReadyOnCurrentSquare()) return false;
-
   const from = playerSquare;
   const to = chooseSpinnerDestination(from);
   if (!to || to === from) {
     spinnerLanding = null;
     return false;
   }
-
   spinActive = true;
   spinSquare = from;
   spinStartT = tNow;
   pendingJumpTo = to;
   inputLocked = true;
-
   spinnerLanding = null;
-
   invalidate();
   return true;
 }
 
 function drawSpinnerOverSquare(n, t) {
   if (!spinActive || spinSquare !== n) return;
-
   const { x, y, r } = squareCenter(n);
   const radius = r.w * 0.22;
-
   const p = Math.max(0, Math.min(1, (t - spinStartT) / spinDurationMs));
   const rot = (t - spinStartT) * 0.018;
-
   ctx.save();
   ctx.globalAlpha = 0.14;
   ctx.fillStyle = "#fff";
   ctx.fillRect(r.x, r.y, r.w, r.h);
   ctx.restore();
-
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
-
   ctx.lineWidth = Math.max(2, r.w * 0.05);
   ctx.strokeStyle = "rgba(0,0,0,0.70)";
   ctx.lineCap = "round";
-
   const arcSpan = (Math.PI * 1.6) * (0.75 + 0.25 * (1 - p));
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, arcSpan);
   ctx.stroke();
-
   ctx.restore();
 }
 
 function updateSpin(t) {
   if (!spinActive) return;
-
   const elapsed = t - spinStartT;
   if (elapsed < spinDurationMs) return;
-
   spinActive = false;
-  needsRender = true; // state changed: ensure final jump frame renders
+  needsRender = true;
   const to = pendingJumpTo;
   pendingJumpTo = null;
-
-  // IMPORTANT: use recordMove so visibility trail updates properly
   recordMove(to);
   stringJolt = Math.min(1.2, stringJolt + 0.45);
-
   inputLocked = false;
-
-  // small cooldown to prevent immediate skipping
   stepLockedUntil = t + STEP_COOLDOWN_MS;
-
-  // Arm behaviours on landing
   maybeArmSubstitutionOnLanding(playerSquare, t);
   armWindowOnLanding(playerSquare, t);
   armSpinnerLanding(playerSquare, t);
@@ -940,15 +820,12 @@ function beginReturnToHospital(tNow, setRecall) {
     recallSquare = playerSquare;
     recallExpiresAt = tNow + RECALL_WINDOW_MS;
   }
-
   spinActive = true;
   spinSquare = playerSquare;
   spinStartT = tNow;
   pendingJumpTo = 1;
   inputLocked = true;
-
   stringJolt = Math.min(1.2, stringJolt + 0.55);
-
   invalidate();
 }
 
@@ -957,7 +834,6 @@ function hospitalPullMaybe(tNow) {
   if (spinActive) return false;
   if (playerSquare === 1) return false;
   if (Math.random() >= HOSPITAL_PULL_CHANCE) return false;
-
   beginReturnToHospital(tNow, true);
   return true;
 }
@@ -966,7 +842,6 @@ function goHome(tNow) {
   if (inputLocked) return;
   if (playerSquare === 1) return;
   beginReturnToHospital(tNow, true);
-
   invalidate();
 }
 
@@ -981,44 +856,37 @@ function canRecall(tNow) {
 
 function attemptRecall(tNow) {
   if (!canRecall(tNow)) return;
-
   const target = recallSquare;
   recallSquare = null;
   recallExpiresAt = 0;
-
   recordMove(target);
   stringJolt = Math.min(1.0, stringJolt + 0.35);
-
   maybeArmSubstitutionOnLanding(playerSquare, tNow);
   armWindowOnLanding(playerSquare, tNow);
   armSpinnerLanding(playerSquare, tNow);
-
   invalidate();
 }
 
 /* ===============================
-   TOKEN (bottom-right)
+   TOKEN
 =============================== */
 function tokenAnchor(t) {
   const a = squareCornerAnchor(playerSquare, "br", TOKEN_PAD_FRAC);
   let cx = a.x;
   let cy = a.y;
   const r = a.r;
-
   if (spinActive) {
     const p = Math.max(0, Math.min(1, (t - spinStartT) / spinDurationMs));
     const amp = r.w * 0.06 * (1 - p);
     cx += Math.sin((t - spinStartT) * 0.05) * amp;
     cy += Math.cos((t - spinStartT) * 0.06) * amp;
   }
-
   return { x: cx, y: cy, r };
 }
 
 function drawToken(t) {
   const { x: cx, y: cy, r } = tokenAnchor(t);
   const size = r.w * 0.45;
-
   if (tokenImg.complete && tokenImg.naturalWidth > 0) {
     ctx.drawImage(tokenImg, cx - size / 2, cy - size / 2, size, size);
     ctx.strokeStyle = "rgba(0,0,0,0.55)";
@@ -1038,42 +906,31 @@ function drawToken(t) {
 /* ===============================
    TETHER STRING
 =============================== */
-
 function drawTetherString(t) {
   const a = squareCornerAnchor(1, "br", PIN_PAD_FRAC);
   const b = tokenAnchor(t);
-
-  // Pure static geometry: a gentle sag curve between anchor and token.
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
-
-  // Sag scales with distance; tuned to feel like the previous "weighted" string.
   const cell = canvas.clientWidth / 10;
   const sag = cell * 0.07 * 0.25 + Math.min(cell * 0.22, len * 0.06);
-
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2 + sag;
-
   ctx.save();
   ctx.lineWidth = Math.max(1, canvas.clientWidth * 0.0026);
   ctx.strokeStyle = STRING_COLOR;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.quadraticCurveTo(mx, my, b.x, b.y);
   ctx.stroke();
-
   ctx.fillStyle = STRING_KNOT_COLOR;
   ctx.beginPath();
   ctx.arc(a.x, a.y, Math.max(2, canvas.clientWidth * 0.0062), 0, Math.PI * 2);
   ctx.fill();
-
   ctx.restore();
 }
-
 
 /* ===============================
    HELP OVERLAY
@@ -1083,106 +940,78 @@ function toggleHelp(open = !helpOpen) {
   if (helpOpen) {
     try { localStorage.setItem(HELP_SEEN_KEY, "1"); } catch {}
   }
-
   invalidate();
 }
 
 function getHelpLines(tNow) {
   const secs = Math.round(RECALL_WINDOW_MS / 1000);
-
   if (helpCopy && Array.isArray(helpCopy.lines)) {
-    const title = helpCopy.title || "Convalescent Snakes & Ladders — controls";
+    const title = helpCopy.title || "Convalescent Snakes & Ladders — controles";
     const lines = helpCopy.lines.map(s => String(s).replaceAll("{RECALL_SECONDS}", String(secs)));
     return { title, lines };
   }
-
   return {
-    title: "Convalescent Snakes & Ladders — controls",
+    title: "Convalescent Snakes & Ladders — controles",
     lines: [
-      "→ / ↑  : forward 1 square",
-      "← / ↓  : back 1 square",
-      "Space  : forward 1 square",
-      "Home / 1 : return to square 1",
-      "M : magnify current square",
+      "→ / ↑  : avanzar 1 casilla",
+      "← / ↓  : retroceder 1 casilla",
+      "Espacio : avanzar 1 casilla",
+      "Inicio / 1 : volver a la casilla 1",
+      "M : ampliar la casilla actual",
       "",
-      "Understanding restriction: most squares show scrambled text until you reach them.",
-      "Spinner squares: land → pause → snakes icon appears → next move flings you.",
-      "Hospital pull: sometimes you are snapped back to square 1.",
-      `Recall: if pulled back, press R within ${secs}s to return.`,
+      "Restricción de comprensión: la mayoría de las casillas muestran texto alterado hasta que llegas a ellas.",
+      "Casillas de serpiente: aterrizas → pausa → aparece la serpiente → el siguiente movimiento te lanza.",
+      "Tirón del hospital: a veces vuelves de golpe a la casilla 1.",
+      `Retorno: si vuelves al hospital, pulsa R antes de ${secs}s para regresar.`,
       "",
-      "Some squares hide their doodle when you land, so the text can be read.",
-      "Type CHEAT : toggle “study mode” (reveals board + disables spinners + disables hospital pull)",
-      "Esc : close help / close magnifier / turn off cheat mode",
+      "Algunas casillas ocultan el dibujo cuando aterrizas para que puedas leer el texto.",
+      "Escribe CHEAT : alternar el modo de estudio (revela el tablero y desactiva serpientes y tirón del hospital)",
+      "Esc : cerrar ayuda / cerrar ampliación / salir del modo de estudio",
       "",
-      "? : toggle this help"
+      "? : mostrar u ocultar esta ayuda"
     ]
   };
 }
 
 function drawHelpOverlay(t) {
   if (!helpOpen) return;
-
   const S = canvas.clientWidth;
-
-  // Panel geometry
   const pad = Math.max(16, S * 0.05);
   const boxW = S - pad * 2;
   const boxH = S - pad * 2;
-
   ctx.save();
-
-  // Dim background
   ctx.globalAlpha = 0.62;
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, S, S);
-
-  // Panel background
   ctx.globalAlpha = 0.96;
   ctx.fillStyle = "#fff";
   ctx.fillRect(pad, pad, boxW, boxH);
-
-  // Panel border
   ctx.globalAlpha = 0.9;
   ctx.strokeStyle = "rgba(0,0,0,0.65)";
   ctx.lineWidth = Math.max(2, S * 0.006);
   ctx.strokeRect(pad, pad, boxW, boxH);
-
-  // Copy
   const { title, lines } = getHelpLines(t);
-
-  // Text layout anchors
   const innerPad = Math.max(16, S * 0.05);
   const left = pad + innerPad;
   const maxTextWidth = boxW - innerPad * 2;
   let y = pad + innerPad;
-
-  // --- Responsive text sizing (prefer consistent sizes; shrink only if needed) ---
   let titleSize = 20;
   let bodySize = 14;
-
   const minTitle = 16;
   const minBody = 11;
-
   const lineGapFor = (bs) => Math.round(bs * 0.6);
-
-  // Estimate height needed (good-enough; prevents overflow on small screens)
   const estimateHeight = (ts, bs) => {
     const lineGap = lineGapFor(bs);
     const titleH = ts * 1.4;
     const lineH = bs + lineGap;
-    // Add a bit of padding at bottom
     return titleH + (lines.length * lineH) + 12;
   };
-
   while (estimateHeight(titleSize, bodySize) > (boxH - innerPad * 1.2) &&
          (titleSize > minTitle || bodySize > minBody)) {
     titleSize = Math.max(minTitle, titleSize - 1);
     bodySize = Math.max(minBody, bodySize - 1);
   }
-
   const lineGap = lineGapFor(bodySize);
-
-  // Draw title
   ctx.globalAlpha = 1;
   ctx.fillStyle = "rgba(0,0,0,0.92)";
   ctx.font = `700 ${titleSize}px system-ui`;
@@ -1190,65 +1019,46 @@ function drawHelpOverlay(t) {
   ctx.textBaseline = "top";
   ctx.fillText(title, left, y, maxTextWidth);
   y += titleSize * 1.4;
-
-  // Draw lines
   ctx.fillStyle = "rgba(0,0,0,0.85)";
   ctx.font = `${bodySize}px system-ui`;
-
   for (const line of lines) {
     if (line === "") { y += bodySize * 0.9; continue; }
     ctx.fillText(line, left, y, maxTextWidth);
     y += bodySize + lineGap;
   }
-
-  // Recall hint
   if (canRecall(t)) {
     y += bodySize * 0.6;
     ctx.fillStyle = "rgba(0,0,0,0.9)";
     ctx.font = `700 ${bodySize}px system-ui`;
-    ctx.fillText("↩ Recall available now: press R.", left, y, maxTextWidth);
+    ctx.fillText("↩ Retorno disponible: pulsa R.", left, y, maxTextWidth);
   }
-
   ctx.restore();
 }
-
 
 /* ===============================
    MAGNIFIER
 =============================== */
 function toggleMagnifier(open = !magnifierOpen) {
   magnifierOpen = !!open;
-
   invalidate();
 }
-
 
 function drawRichTextBox(text, box, opts = {}) {
   const { alpha = 1, startFont = 26, minFont = 12, padding = 14 } = opts;
   if (!text) return;
-
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = "rgba(0,0,0,0.92)";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-
   const maxWidth = box.w - padding * 2;
   const maxHeight = box.h;
-
   const fit = getRichTextFitCached(text, maxWidth, maxHeight, {
-    kind: "box",
-    startFont,
-    minFont,
-    padding,
-    lineHMult: 1.2,
-    gapMult: 0.45
+    kind: "box", startFont, minFont, padding, lineHMult: 1.2, gapMult: 0.45
   });
-
   ctx.beginPath();
   ctx.rect(box.x + padding, box.y + padding, box.w - 2 * padding, box.h - 2 * padding);
   ctx.clip();
-
   let y = box.y + padding;
   for (const item of fit.lines) {
     if (item.type === "gap") { y += fit.gapH; continue; }
@@ -1260,90 +1070,70 @@ function drawRichTextBox(text, box, opts = {}) {
     }
     y += fit.lineH;
   }
-
   ctx.restore();
 }
 
-
 function drawMagnifierOverlay(t) {
   if (!magnifierOpen) return;
-
   const S = canvas.clientWidth;
   const pad = Math.max(14, S * 0.05);
-
   const panelH = Math.max(140, S * 0.34);
   const panelW = S - pad * 2;
   const x = pad;
   const y = S - pad - panelH;
-
-  const text = getSquareDisplayText(playerSquare) || "(no text for this square)";
-
+  const text = getSquareDisplayText(playerSquare) || "(sin texto para esta casilla)";
   ctx.save();
-
   ctx.globalAlpha = 0.42;
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, S, S);
-
   ctx.globalAlpha = 0.96;
   ctx.fillStyle = "#fff";
   ctx.fillRect(x, y, panelW, panelH);
-
   ctx.globalAlpha = 0.9;
   ctx.strokeStyle = "rgba(0,0,0,0.75)";
   ctx.lineWidth = Math.max(2, S * 0.006);
   ctx.strokeRect(x, y, panelW, panelH);
-
   const headerSize = Math.max(12, Math.round(S * 0.022));
   ctx.globalAlpha = 0.7;
   ctx.fillStyle = "rgba(0,0,0,0.75)";
   ctx.font = `700 ${headerSize}px system-ui`;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText(`Square ${playerSquare}`, x + 14, y + 10);
-
+  ctx.fillText(`Casilla ${playerSquare}`, x + 14, y + 10);
   const bodyBox = {
     x: x + 10,
     y: y + 10 + headerSize * 1.4,
     w: panelW - 20,
     h: panelH - (10 + headerSize * 1.4) - 24
   };
-
   drawRichTextBox(text, bodyBox, {
     startFont: Math.max(18, Math.round(S * 0.045)),
     minFont: Math.max(12, Math.round(S * 0.03)),
     padding: 14,
     alpha: 1
   });
-
   ctx.globalAlpha = 0.6;
   ctx.fillStyle = "rgba(0,0,0,0.7)";
   ctx.font = `600 ${headerSize}px system-ui`;
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
-  ctx.fillText("M or Esc to close", x + panelW - 14, y + panelH - 10);
-
+  ctx.fillText("M o Esc para cerrar", x + panelW - 14, y + panelH - 10);
   ctx.restore();
 }
 
 /* ===============================
-   MAIN DRAW (no fog, cipher-only restriction)
+   MAIN DRAW
 =============================== */
 function draw(t) {
   const S = canvas.clientWidth;
   ctx.clearRect(0, 0, S, S);
-
   if (board.complete && board.naturalWidth > 0) ctx.drawImage(board, 0, 0, S, S);
-
   const visible = getVisibleSet();
   const defaultTilePath = tileConfig.tiles[tileConfig.defaultTile] || "";
-
   for (let n = 1; n <= 100; n++) {
     const { row, col } = squareToRowCol(n);
     const rect = cellRect(row, col);
-
     const isVis = visible.has(n) || n === 1;
-
-    // Spinner takeover (only on current square, after delay)
     const spinnerShowing =
       spinnerLanding &&
       spinnerLanding.square === n &&
@@ -1351,57 +1141,30 @@ function draw(t) {
       playerSquare === n &&
       !spinActive &&
       !revealAll;
-
     if (spinnerShowing) {
       drawIconContain((spinnerLanding && spinnerLanding.iconPath) ? spinnerLanding.iconPath : SPINNER_ICON_DEFAULT, rect, { padFrac: SPINNER_PAD_FRAC, alpha: 1 });
       continue;
     }
-
-    // Background tile (ALWAYS from tiles.json)
     let bgPath = tileBySquare[n] || defaultTilePath || "";
-
-    // Extra behaviour (kept): in cheat mode, window squares revert to default blue (for readability)
     if (revealAll && windowSquares.has(n) && defaultTilePath) bgPath = defaultTilePath;
-
     drawTile(bgPath, rect);
-
-    // Icon overlay
     const entry = squareData[String(n)] || {};
     const iconPath = (typeof entry.icon === "string" && entry.icon.trim()) ? entry.icon.trim() : "";
     const hasIcon = !!iconPath;
-
     const isWindow = windowSquares.has(n);
     const windowRevealedNow = isWindowRevealedForSquare(n);
-
-    // Popup squares (speech windows): identified by popups.json having {popup:"..."}
     const hasPopup = !!getSubTextForSquare(n);
-
-    // POPUP squares: icon always stays if present (text swaps underneath after delay)
-    // Window squares: show icon until revealed; then hide icon & show text
-    // Other icon squares: show icon until you land; landing swaps to text (icon hidden)
     const showIcon =
-  hasIcon &&
-  !revealAll &&                 // ← CHEAT mode: text-only layer (no icons)
-  (
-    hasPopup ? true :
-    (isWindow ? !windowRevealedNow :
-      (playerSquare !== n)       // (revealAll removed)
-    )
-  );
-
-
+      hasIcon &&
+      !revealAll &&
+      (
+        hasPopup ? true :
+        (isWindow ? !windowRevealedNow : (playerSquare !== n))
+      );
     if (showIcon) {
       drawIconContain(iconPath, rect, { padFrac: ICON_PAD_FRAC, alpha: 1 });
     }
-
-    // Text layer
     const text = getSquareDisplayText(n);
-
-    // Allow text:
-    // - Popup squares: ALWAYS (base text on load; swaps after landing delay)
-    // - Window squares: only when revealed
-    // - Other icon squares: only when standing on it (or revealAll)
-    // - Plain squares: always
     const allowText =
       !!text &&
       (
@@ -1410,41 +1173,30 @@ function draw(t) {
           (hasIcon ? (revealAll || playerSquare === n) : true)
         )
       );
-
     if (text && allowText) {
-      // cipher restriction: if not visible, show scrambled version (no fog veil)
       const displayText = (isVis || revealAll) ? text : getScrambledText(n, text);
       drawRichText(displayText, rect, 1);
     }
-
     drawSpinnerOverSquare(n, t);
   }
-
   drawTetherString(t);
   drawToken(t);
-
-  // Recall hint on square 1
   if (canRecall(t)) {
     const pin = squareCornerAnchor(1, "br", PIN_PAD_FRAC);
     const x = pin.x - pin.r.w * RECALL_LABEL_X_FRAC;
     const y = pin.y - pin.r.w * RECALL_LABEL_Y_FRAC;
     const fontPx = Math.max(14, Math.round(pin.r.w * 0.24));
-
     ctx.save();
     ctx.font = `800 ${fontPx}px system-ui`;
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-
     ctx.lineWidth = Math.max(3, Math.round(fontPx * 0.18));
     ctx.strokeStyle = "rgba(0,0,0,0.85)";
     ctx.strokeText("↩ R", x, y);
-
     ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.fillText("↩ R", x, y);
     ctx.restore();
   }
-
-  // Flash feedback on CHEAT toggle
   if (t < cheatFlashUntil) {
     const remaining = cheatFlashUntil - t;
     const a = Math.max(0, Math.min(1, remaining / CHEAT_FLASH_MS));
@@ -1454,44 +1206,32 @@ function draw(t) {
     ctx.fillRect(0, 0, S, S);
     ctx.restore();
   }
-
   drawMagnifierOverlay(t);
   drawHelpOverlay(t);
 }
 
 /* ===============================
-   MOVEMENT (1 square at a time)
+   MOVEMENT
 =============================== */
 function attemptStep(delta, tNow) {
   if (inputLocked) return;
   if (tNow < stepLockedUntil) return;
-
-  // Spinner: if ready, next movement key triggers the jump instead of stepping.
   if (triggerSpinnerJump(tNow)) return;
-
   const next = Math.max(1, Math.min(100, playerSquare + delta));
   if (next === playerSquare) return;
-
   recordMove(next);
-  stepLockedUntil = tNow + STEP_COOLDOWN_MS; // <-- key line
-
+  stepLockedUntil = tNow + STEP_COOLDOWN_MS;
   stringJolt = Math.min(1.0, stringJolt + 0.25);
-
-  // Arm behaviours on landing
   maybeArmSubstitutionOnLanding(playerSquare, tNow);
   armWindowOnLanding(playerSquare, tNow);
   armSpinnerLanding(playerSquare, tNow);
-
   hospitalPullMaybe(tNow);
-
   invalidate();
 }
-
 
 /* ===============================
    INPUT
 =============================== */
-// CHEAT typing: type "CHEAT" quickly
 let cheatBuffer = "";
 let cheatLastT = 0;
 const CHEAT_TIMEOUT_MS = 700;
@@ -1499,52 +1239,39 @@ const CHEAT_TIMEOUT_MS = 700;
 function pushCheatChar(ch, tNow) {
   if (tNow - cheatLastT > CHEAT_TIMEOUT_MS) cheatBuffer = "";
   cheatLastT = tNow;
-
   cheatBuffer = (cheatBuffer + ch).slice(-5);
-
   if (cheatBuffer === "cheat") {
     revealAll = !revealAll;
     cheatFlashUntil = performance.now() + CHEAT_FLASH_MS;
     cheatBuffer = "";
-    // reveal mode changes visibility + cipher usage
     scrambleCache.clear();
     invalidate();
     return true;
   }
   return false;
-
-  invalidate();
 }
 
 document.addEventListener("keydown", (e) => {
   const tNow = performance.now();
-
   const code = e.code || "";
   const rawKey = e.key || "";
   const key = String(rawKey || "").toLowerCase();
-
-  // CHEAT typing has priority (no modifiers)
   if (key.length === 1 && "cheat".includes(key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
     const toggled = pushCheatChar(key, tNow);
     if (toggled) { e.preventDefault(); return; }
   }
-
   const isHelp = (key === "?" || (key === "/" && e.shiftKey));
   const isEsc = (code === "Escape" || key === "escape");
   const isMagnify = (key === "m");
   const isRecall = (key === "r");
   const isHome = (code === "Home" || key === "home" || key === "1");
-
   const isSpace = (code === "Space") || (rawKey === " ") || (rawKey === "Spacebar");
   const isForward =
     (code === "ArrowRight") || (code === "ArrowUp") ||
     (rawKey === "ArrowRight") || (rawKey === "ArrowUp");
-
   const isBack =
     (code === "ArrowLeft") || (code === "ArrowDown") ||
     (rawKey === "ArrowLeft") || (rawKey === "ArrowDown");
-
-  // If magnifier is open, first close it
   const isMovementKey = isSpace || isForward || isBack || isHome || isRecall;
   if (magnifierOpen) {
     if (isEsc || isMagnify || isHelp || isMovementKey) {
@@ -1553,25 +1280,19 @@ document.addEventListener("keydown", (e) => {
       return;
     }
   }
-
   if (!(isHelp || isEsc || isMagnify || isRecall || isHome || isSpace || isForward || isBack)) return;
   e.preventDefault();
-
   if (isHelp) { toggleHelp(!helpOpen); return; }
   if (isMagnify) { toggleMagnifier(!magnifierOpen); return; }
-
   if (isEsc)  {
     if (helpOpen) { toggleHelp(false); return; }
     if (magnifierOpen) { toggleMagnifier(false); return; }
     if (revealAll) { revealAll = false; scrambleCache.clear(); invalidate(); return; }
     return;
   }
-
   if (helpOpen) return;
-
   if (isHome) { goHome(tNow); return; }
   if (isRecall) { attemptRecall(tNow); return; }
-
   if (isBack) attemptStep(-1, tNow);
   else attemptStep(+1, tNow);
 });
@@ -1581,7 +1302,6 @@ window.addEventListener("blur", () => {
   cheatLastT = 0;
 });
 
-// Pause rendering completely when tab/window is hidden.
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     cancelRAF();
@@ -1590,9 +1310,8 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-
 /* ===============================
-   TICK / LOOP (render-on-demand)
+   TICK / LOOP
 =============================== */
 function isAnimating(t) {
   return (
@@ -1605,25 +1324,19 @@ function isAnimating(t) {
 }
 
 function frame(t) {
-  // Clear first so invalidate() inside any handlers can schedule a new RAF safely.
   rafId = null;
-
-  // Time-gated state updates
   updateWindowReveal(t);
   updateSpinnerLanding(t);
   updateSpin(t);
   updateSubstitution(t);
-
   if (needsRender || isAnimating(t)) {
     draw(t);
     needsRender = false;
   }
-
   if (isAnimating(t)) {
     rafId = requestAnimationFrame(frame);
   }
 }
-
 
 /* ===============================
    START
@@ -1641,9 +1354,7 @@ let started = false;
 async function start() {
   if (started) return;
   started = true;
-
   resizeCanvas();
-
   try {
     await Promise.all([
       loadTiles(),
@@ -1656,18 +1367,14 @@ async function start() {
   } catch (err) {
     console.error("data failed to load:", err);
   }
-
-  // Arm behaviours on starting square
   const now = performance.now();
   maybeArmSubstitutionOnLanding(playerSquare, now);
   armWindowOnLanding(playerSquare, now);
   armSpinnerLanding(playerSquare, now);
-
   maybeOpenHelpOnFirstVisit();
   invalidate();
 }
 
-// Start once: if the board loads, great; if it fails, also start; if it's already cached, start immediately.
 board.onload = () => start();
 board.onerror = () => start();
 if (board.complete) start();
