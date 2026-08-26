@@ -1,30 +1,28 @@
 {
-  "title": "Convalescent Snakes & Ladders — controls",
+  "title": "Convalescent Snakes & Ladders — controles",
   "lines": [
-    "This board is not meant to be efficient or strategic. It's meant to feel like recovery.",
-    "Sometimes progress reverses or stalls without warning. That is intentional.",
-    "The goal is not victory, the goal is experience.",
+    "Este tablero no está pensado para ser eficiente ni estratégico. Está pensado para sentirse como la recuperación.",
+    "A veces el progreso retrocede o se detiene sin previo aviso. Es intencionado.",
+    "El objetivo no es ganar, sino vivir la experiencia.",
     "",
-    "How it works:",
-    "→ / ↑ / SPACE  :  forward 1 square",
-    "← / ↓   :  back 1 square",
-    "Home / 1  :  return to square 1",
-    "?   :  opens this help window",
-    "Esc   :  closes this help window",
-    "M   :  opens a window with the current square's text enlarged",
+    "Cómo funciona:",
+    "→ / ↑ / ESPACIO  :  avanzar 1 casilla",
+    "← / ↓   :  retroceder 1 casilla",
+    "Inicio / 1  :  volver a la casilla 1",
+    "?   :  abre esta ventana de ayuda",
+    "Esc   :  cierra esta ventana de ayuda",
+    "M   :  abre una ventana con el texto ampliado de la casilla actual",
     "",
-    "Hospital pull:  sometimes you are snapped back to the hospital square for a clinic visit.",
-    "Recall:  if you have to visit the hospital, press R within a few seconds to return to your most recent square.",
-    "Snakes & Ladder squares:  You'll see!",
-    "",
-    "",
+    "Vuelta al hospital:  a veces vuelves de golpe a la casilla del hospital para una visita a la clínica.",
+    "Retorno:  si tienes que volver al hospital, pulsa R durante los siguientes segundos para regresar a tu casilla más reciente.",
+    "Casillas de serpientes y escaleras:  ¡Ya verás!",
     "",
     "",
     "",
     "",
-    "© Alice van Rooyen, 2026. Please attribute if used for teaching or research.",
-    "This work is licensed under a Creative Commons Attribution 4.0 International License (CC BY 4.0)."
+    "",
+    "",
+    "© Alice van Rooyen, 2026. Por favor, atribuye la autoría si se utiliza para docencia o investigación.",
+    "Esta obra está bajo una licencia Creative Commons Atribución 4.0 Internacional (CC BY 4.0)."
   ]
 }
-
-
